@@ -165,7 +165,7 @@ Function Get-WindowsFileSystemDrives {
 			$Disk = ($WindowsPwshPath -match ':') ? $WindowsPwshPath.Split(':')[0].ToLower() : $null
 
 			if ([String]::IsNullOrWhiteSpace($Disk) -eq $false) {
-				Join-Path -Path '/mnt' -ChildPath $Disk $WindowsPwshPath.Split(':')[1]
+				Join-Path -Path '/mnt' -ChildPath $Disk -AdditionalChildPath $WindowsPwshPath.Split(':')[1]
 			} elseif ($WindowsPwshPath.StartsWith('\\')) {
 				$WindowsPwshPath.Replace('\', '/')
 			}
@@ -176,13 +176,13 @@ Function Get-WindowsFileSystemDrives {
 	if ([string]::IsNullOrWhiteSpace($wslMappedWinPwshPath)) { return $result }
 
 	# Call out to windows pwsh and correlate drives.
-	$mntPoints = Get-ChildItem '/mnt' -Directory -Exclude 'wsl' | Select-Object -ExpandProperty Name
+	$mntPoints = Get-ChildItem '/mnt' -Directory -Exclude 'wsl' | Foreach-Object Name
 	$PwshCmd =
 		'Get-PSDrive -PSProvider FileSystem ' +
 		'| Where-Object {$_.Name -ine ''Temp''} ' +
 		'| ForEach-Object { @{ Name = $_.Name ; Root = Select-Object -InputObject $_ -ExpandProperty Root } } ' +
 		'| ConvertTo-Json -compress'
-	$WinPSDrives = & $wslMappedWinPwshPath -c $PwshCmd | ConvertFrom-Json
+	$WinPSDrives = & $wslMappedWinPwshPath -noprofile -c $PwshCmd | ConvertFrom-Json
 	Foreach ($Drive in $WinPSDrives) {
 		$WinDrive = [PSCustomObject]@{
 			driveName    = $Drive.Name
